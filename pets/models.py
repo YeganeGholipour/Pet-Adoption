@@ -2,20 +2,26 @@ from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-class Adopter(AbstractUser):
-    name = models.CharField(max_length=100)
-    phone_number = models.CharField(max_length=15)  
-    address = models.TextField()
-    birth_date = models.DateField()
-    join_date = models.DateTimeField(auto_now_add=True)
+class UserRolesChoices(models.TextChoices):
+    ADOPTER = '0', 'Adopter'
+    USER = '1', 'User'
 
+class User(AbstractUser):
+    phone_number = models.CharField(max_length=15, null=True, blank=True)  
+    address = models.TextField(null=True, blank=True)
+    birth_date = models.DateField(null=True, blank=True)
+    join_date = models.DateTimeField(auto_now_add=True)
+    role = models.CharField(max_length=1, choices=UserRolesChoices.choices, default=UserRolesChoices.USER)
+    
     @property
     def age(self):
-        today = datetime.today()
-        return today.year - self.birth_date.year - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+        if self.birth_date:
+            today = datetime.today()
+            return today.year - self.birth_date.year - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
+        return None
 
     def __str__(self):
-        return self.name
+        return self.username
 
 class GenderChoices(models.TextChoices):
     FEMALE = 'F', 'Female'
@@ -28,7 +34,7 @@ class AdoptionStatusChoices(models.TextChoices):
 class Location(models.Model):
     address = models.TextField()
     name = models.CharField(max_length=100)
-    phone_number = models.CharField(max_length=15)  
+    phone_number = models.CharField(max_length=15)
 
     def __str__(self):
         return self.name
@@ -39,7 +45,7 @@ class Animal(models.Model):
     breed = models.CharField(max_length=100)
     gender = models.CharField(max_length=1, choices=GenderChoices.choices)
     name = models.CharField(max_length=100)
-    age = models.IntegerField() 
+    age = models.IntegerField()
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -47,8 +53,8 @@ class Animal(models.Model):
 
 class Adoption(models.Model):
     animal = models.ForeignKey(Animal, on_delete=models.CASCADE)
-    adopter = models.ForeignKey(Adopter, on_delete=models.CASCADE)
+    adopter = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': UserRolesChoices.ADOPTER})
     adoption_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.adopter.name} has adopted {self.animal.name}."
+        return f"{self.adopter.username} has adopted {self.animal.name}."
