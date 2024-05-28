@@ -10,7 +10,8 @@ class LocationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'phone_number', 'address', 'birth_date', 'join_date', 'role']
+        fields = '__all__'
+        
 
 class AnimalSerializer(serializers.ModelSerializer):
     location = LocationSerializer()
@@ -52,7 +53,7 @@ class AdoptionSerializer(serializers.ModelSerializer):
         animal_data = validated_data.pop('animal')
         adopter_data = validated_data.pop('adopter')
 
-        animal, created = Animal.objects.get_or_create(**animal_data)
+        animal, created = Animal.objects.get_or_create(status=AdoptionStatusChoices.ADOPTED, **animal_data)
         adopter, created = User.objects.get_or_create(role=UserRolesChoices.ADOPTER, **adopter_data)
 
         adoption = Adoption.objects.create(animal=animal, adopter=adopter, **validated_data)
@@ -93,13 +94,9 @@ class UpdateAdoptionStatusSerializer(serializers.ModelSerializer):
 
         return instance
 
-
-class TokenLoginSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = User
-        fields = ('username', 'password')
-        write_only_fields = ['username', 'password']
+class TokenLoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
 
     def validate(self, data):
         username = data.get('username')
@@ -118,3 +115,43 @@ class TokenLoginSerializer(serializers.ModelSerializer):
 
         data['user'] = user
         return data
+
+class RegisterationSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(max_length=100)
+    confirm_password = serializers.CharField(max_length=100, write_only=True)
+
+    class Meta:
+        model = User
+        fields = ('username', 'password', 'confirm_password', 'email')
+        write_only_fields = ['username', 'password', 'confirm_password', 'email']
+
+    def validate(self, data):
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        email = data.get('email')
+        username = data.get('username')
+
+        if not username:
+            raise serializers.ValidationError('Username is required')
+
+        if User.objects.filter(username=username).exists():
+            raise serializers.ValidationError('Username already exists')
+
+        if not email:
+            raise serializers.ValidationError('Email is required')
+
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError('Email already exists')
+
+        if password and confirm_password:
+            if password != confirm_password:
+                raise serializers.ValidationError('Passwords do not match')
+        else:
+            raise serializers.ValidationError('Password is required')
+
+        user = User.objects.create(username=username, email=email)
+        data['user'] = user
+
+        return data
+

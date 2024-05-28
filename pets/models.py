@@ -1,18 +1,37 @@
 from datetime import datetime
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Group, Permission
 
 class UserRolesChoices(models.TextChoices):
     ADOPTER = '0', 'Adopter'
     USER = '1', 'User'
 
 class User(AbstractUser):
-    phone_number = models.CharField(max_length=15, null=True, blank=True)  
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
     address = models.TextField(null=True, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     join_date = models.DateTimeField(auto_now_add=True)
     role = models.CharField(max_length=1, choices=UserRolesChoices.choices, default=UserRolesChoices.USER)
-    
+
+    groups = models.ManyToManyField(
+        Group,
+        related_name='pets_user_set',  # Change the related_name to avoid clash
+        blank=True,
+        help_text=(
+            'The groups this user belongs to. A user will get all permissions '
+            'granted to each of their groups.'
+        ),
+        related_query_name='user',
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='pets_user_permissions_set',  # Change the related_name to avoid clash
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_query_name='user',
+    )
+
+
     @property
     def age(self):
         if self.birth_date:
@@ -21,7 +40,7 @@ class User(AbstractUser):
         return None
 
     def __str__(self):
-        return self.username
+        return self.username  
 
 class GenderChoices(models.TextChoices):
     FEMALE = 'F', 'Female'
@@ -57,4 +76,4 @@ class Adoption(models.Model):
     adoption_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.adopter.username} has adopted {self.animal.name}."
+        return f"{self.adopter.phone_number} has adopted {self.animal.name}."
