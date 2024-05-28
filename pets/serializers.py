@@ -10,7 +10,8 @@ class LocationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        fields = ['username', 'email', 'phone_number', 'address', 'birth_date', 'join_date']
+        
         
 
 class AnimalSerializer(serializers.ModelSerializer):
