@@ -1,10 +1,12 @@
 from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView, UpdateAPIView
 from .models import Animal, User, Adoption, Location, AdoptionStatusChoices, UserRolesChoices
-from .serializers import AnimalSerializer, UserSerializer, AdoptionSerializer, LocationSerializer, UpdateAdoptionStatusSerializer, TokenLoginSerializer, RegisterationSerializer
+from .serializers import AnimalSerializer, UserSerializer, AdoptionSerializer, LocationSerializer, TokenLoginSerializer, RegisterationSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
+
+from pets import serializers
 
 class ListAllAnimals(ListAPIView):
     queryset = Animal.objects.all()
@@ -26,11 +28,28 @@ class RegisterAnAnimal(CreateAPIView):
     serializer_class = AnimalSerializer
     # permission_classes = []
 
-class AssignAdoption(CreateAPIView):
-    queryset = Adoption.objects.all()
-    serializer_class = AdoptionSerializer
-    # permission_classes = []
+class AssignAdoption(APIView):
 
+    def get(self, request, *args, **kwargs):
+        # Provide the lists of all users and non-adopted animals
+        users = User.objects.all()
+        animals = Animal.objects.filter(status=AdoptionStatusChoices.NOTADOPTED)
+        
+        users_data = [{"id": user.id, "username": user.username} for user in users]
+        animals_data = [{"id": animal.id, "name": animal.name} for animal in animals]
+        
+        return Response({
+            "users": users_data,
+            "animals": animals_data
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        serializer = AdoptionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class RegisterAnAdopter(CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -56,10 +75,10 @@ class RetrieveAnAdoption(RetrieveAPIView):
     serializer_class = AdoptionSerializer
     # permission_classes = []
 
-class UpdateAdoptionStatusView(UpdateAPIView):
-    queryset = Animal.objects.all()
-    serializer_class = UpdateAdoptionStatusSerializer
-    # permission_classes = []
+# class UpdateAdoptionStatusView(UpdateAPIView):
+#     queryset = Animal.objects.all()
+#     serializer_class = UpdateAdoptionStatusSerializer
+#     # permission_classes = []
 
 class RegisterUser(APIView):
     # permission_classes = []

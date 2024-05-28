@@ -42,58 +42,57 @@ class AnimalSerializer(serializers.ModelSerializer):
 
         return instance
 
+
 class AdoptionSerializer(serializers.ModelSerializer):
-    animal = AnimalSerializer()
-    adopter = UserSerializer()
+    animal = serializers.StringRelatedField()
+    adopter = serializers.StringRelatedField()
 
     class Meta:
         model = Adoption
         fields = '__all__'
 
     def create(self, validated_data):
-        animal_data = validated_data.pop('animal')
-        adopter_data = validated_data.pop('adopter')
+        animal_name = validated_data.pop('animal')
+        adopter_username = validated_data.pop('adopter')
 
-        animal, created = Animal.objects.get_or_create(status=AdoptionStatusChoices.ADOPTED, **animal_data)
-        adopter, created = User.objects.get_or_create(role=UserRolesChoices.ADOPTER, **adopter_data)
-
-        adoption = Adoption.objects.create(animal=animal, adopter=adopter, **validated_data)
+        # Fetch the animal instance using name
+        animal = Animal.objects.get(name=animal_name)
         animal.status = AdoptionStatusChoices.ADOPTED
         animal.save()
+
+        # Fetch the adopter instance using username
+        adopter = User.objects.get(username=adopter_username)
+        adopter.role = UserRolesChoices.ADOPTER
+        adopter.save()
+
+        # Create the adoption record
+        adoption = Adoption.objects.create(animal=animal, adopter=adopter, **validated_data)
 
         return adoption
 
     def update(self, instance, validated_data):
-        animal_data = validated_data.pop('animal')
-        adopter_data = validated_data.pop('adopter')
+        animal_name = validated_data.pop('animal')
+        adopter_username = validated_data.pop('adopter')
 
-        animal, created = Animal.objects.get_or_create(**animal_data)
-        adopter, created = User.objects.get_or_create(**adopter_data)
+        # Fetch and update the animal instance using name
+        animal = Animal.objects.get(name=animal_name)
+        animal.status = AdoptionStatusChoices.ADOPTED
+        animal.save()
 
+        # Fetch and update the adopter instance using username
+        adopter = User.objects.get(username=adopter_username)
+        adopter.role = UserRolesChoices.ADOPTER
+        adopter.save()
+
+        # Update the adoption record
         instance.animal = animal
         instance.adopter = adopter
         instance.adoption_date = validated_data.get('adoption_date', instance.adoption_date)
-
         instance.save()
 
         return instance
 
-class UpdateAdoptionStatusSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Animal
-        fields = ['status']
 
-    def update(self, instance, validated_data):
-        status = validated_data.get('status')
-
-        if status == AdoptionStatusChoices.NOTADOPTED:
-            # Delete the corresponding adoption record if it exists
-            Adoption.objects.filter(animal=instance).delete()
-
-        instance.status = status
-        instance.save()
-
-        return instance
 
 class TokenLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -117,15 +116,19 @@ class TokenLoginSerializer(serializers.Serializer):
         data['user'] = user
         return data
 
+
 class RegisterationSerializer(serializers.ModelSerializer):
     email = serializers.EmailField()
-    password = serializers.CharField(max_length=100)
+    password = serializers.CharField(max_length=100, write_only=True)
     confirm_password = serializers.CharField(max_length=100, write_only=True)
+    phone_number = serializers.CharField(max_length=15, required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    birth_date = serializers.DateField(required=False)
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'confirm_password', 'email')
-        write_only_fields = ['username', 'password', 'confirm_password', 'email']
+        fields = ('username', 'password', 'confirm_password', 'email', 'phone_number', 'address', 'birth_date')
+        write_only_fields = ['password', 'confirm_password']
 
     def validate(self, data):
         password = data.get('password')
@@ -151,8 +154,27 @@ class RegisterationSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError('Password is required')
 
-        user = User.objects.create(username=username, email=email)
-        data['user'] = user
-
         return data
+
+    def create(self, validated_data):
+        username = validated_data['username']
+        email = validated_data['email']
+        password = validated_data['password']
+        phone_number = validated_data.get('phone_number', '')
+        address = validated_data.get('address', '')
+        birth_date = validated_data.get('birth_date', None)
+
+        user = User(
+            username=username,
+            email=email,
+            phone_number=phone_number,
+            address=address,
+            birth_date=birth_date,
+            role=User.USER_ROLES_CHOICES.USER  
+        )
+        user.set_password(password)
+        user.save()
+
+        return user
+
 
