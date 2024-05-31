@@ -1,6 +1,10 @@
+from telnetlib import STATUS
 from rest_framework import serializers
 from .models import Animal, Location, User, Adoption, AdoptionStatusChoices, UserRolesChoices
 from django.contrib.auth import authenticate
+
+from pets import models
+
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,9 +14,20 @@ class LocationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email', 'phone_number', 'address', 'birth_date', 'join_date']
-        
-        
+        fields = ['username', 'email', 'phone_number', 'address', 'birth_date', 'role']
+
+    def update(self, instance, validated_data):
+        instance.username = validated_data.get('username', instance.username)
+        instance.email = validated_data.get('email', instance.email)
+        instance.phone_number = validated_data.get('phone_number', instance.phone_number)
+        instance.address = validated_data.get('address', instance.address)
+        instance.birth_date = validated_data.get('birth_date', instance.birth_date)
+        instance.role = validated_data.get('role', instance.role)
+
+        instance.save()
+        return instance
+
+
 
 class AnimalSerializer(serializers.ModelSerializer):
     location = LocationSerializer()
@@ -25,6 +40,7 @@ class AnimalSerializer(serializers.ModelSerializer):
         location_data = validated_data.pop('location')
         location, created = Location.objects.get_or_create(**location_data)
         animal = Animal.objects.create(location=location, **validated_data)
+        
         return animal
 
     def update(self, instance, validated_data):
@@ -44,24 +60,22 @@ class AnimalSerializer(serializers.ModelSerializer):
 
 
 class AdoptionSerializer(serializers.ModelSerializer):
-    animal = serializers.StringRelatedField()
-    adopter = serializers.StringRelatedField()
+    animal = serializers.PrimaryKeyRelatedField(queryset=Animal.objects.filter(status=AdoptionStatusChoices.NOTADOPTED))
+    adopter = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     class Meta:
         model = Adoption
         fields = '__all__'
 
     def create(self, validated_data):
-        animal_name = validated_data.pop('animal')
-        adopter_username = validated_data.pop('adopter')
+        animal = validated_data.pop('animal')
+        adopter = validated_data.pop('adopter')
 
-        # Fetch the animal instance using name
-        animal = Animal.objects.get(name=animal_name)
+        # Update animal status
         animal.status = AdoptionStatusChoices.ADOPTED
         animal.save()
 
-        # Fetch the adopter instance using username
-        adopter = User.objects.get(username=adopter_username)
+        # Update adopter role
         adopter.role = UserRolesChoices.ADOPTER
         adopter.save()
 
@@ -71,16 +85,14 @@ class AdoptionSerializer(serializers.ModelSerializer):
         return adoption
 
     def update(self, instance, validated_data):
-        animal_name = validated_data.pop('animal')
-        adopter_username = validated_data.pop('adopter')
+        animal = validated_data.pop('animal')
+        adopter = validated_data.pop('adopter')
 
-        # Fetch and update the animal instance using name
-        animal = Animal.objects.get(name=animal_name)
+        # Update the animal instance
         animal.status = AdoptionStatusChoices.ADOPTED
         animal.save()
 
-        # Fetch and update the adopter instance using username
-        adopter = User.objects.get(username=adopter_username)
+        # Update the adopter instance
         adopter.role = UserRolesChoices.ADOPTER
         adopter.save()
 
@@ -91,6 +103,7 @@ class AdoptionSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
 
 
 
@@ -109,7 +122,7 @@ class TokenLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('Password is required')
 
         user = authenticate(username=username, password=password)
-
+        print(f"Authenticating user: {username}")
         if not user:
             raise serializers.ValidationError('Invalid credentials')
 
@@ -170,10 +183,13 @@ class RegisterationSerializer(serializers.ModelSerializer):
             phone_number=phone_number,
             address=address,
             birth_date=birth_date,
-            role=User.USER_ROLES_CHOICES.USER  
+            role=UserRolesChoices.USER  
         )
         user.set_password(password)
         user.save()
+
+        # Print debug information
+        print(f"User created: {user.username} with email: {user.email} and hashed password: {user.password}")
 
         return user
 

@@ -1,4 +1,5 @@
-from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView, UpdateAPIView
+import email
+from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView
 from .models import Animal, User, Adoption, Location, AdoptionStatusChoices, UserRolesChoices
 from .serializers import AnimalSerializer, UserSerializer, AdoptionSerializer, LocationSerializer, TokenLoginSerializer, RegisterationSerializer
 from rest_framework.views import APIView
@@ -6,7 +7,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 
-from pets import serializers
+from pets import serializers 
+
 
 class ListAllAnimals(ListAPIView):
     queryset = Animal.objects.all()
@@ -50,10 +52,19 @@ class AssignAdoption(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class RegisterAnAdopter(CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    # permission_classes = []
+# class RegisterAnAdopter(APIView):
+#     serializer_class = UserSerializer
+#     def post(self, request, *args, **kwargs):
+        
+#         serializer = self.serializer_class(data=request.data)
+#         role = UserRolesChoices.ADOPTER
+#         username = request.data.get('username')
+#         email = request.data.get('email')
+#         phone_number = request.data.get('phone_number', '')
+#         birth_date = request.data.get('birth_date', None)
+#         address = request.data.get('address', '')
+        
+
 
 class ListAllAdopters(ListAPIView):
     queryset = User.objects.filter(role=UserRolesChoices.ADOPTER)
@@ -86,12 +97,10 @@ class RegisterUser(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        user.set_password(serializer.validated_data['password'])
-        user.save()
-        return Response(status=status.HTTP_201_CREATED)
-        
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()  # Save the user instance
+            return Response({'message': 'registered successfully'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class TokenLoginView(APIView):
     # permission_classes = []
@@ -111,3 +120,32 @@ class TokenLogoutView(APIView):
         except Token.DoesNotExist:
             pass
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class UpdateUser(APIView):
+    serializer_class = UserSerializer
+
+    def put(self, request, *args, **kwargs):
+        user_id = kwargs.get('pk') 
+        try:
+            user_instance = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(user_instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
+    
+    def patch(self, request, *args, **kwargs):
+        user_id = kwargs.get('pk')  
+        try:
+            user_instance = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(user_instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)

@@ -1,0 +1,4 @@
+the new adopter registration should be based on the available users
+update the animal status
+updat animal location
+update the adopter of an animal
