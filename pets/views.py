@@ -52,17 +52,6 @@ class AssignAdoption(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-# class RegisterAnAdopter(APIView):
-#     serializer_class = UserSerializer
-#     def post(self, request, *args, **kwargs):
-        
-#         serializer = self.serializer_class(data=request.data)
-#         role = UserRolesChoices.ADOPTER
-#         username = request.data.get('username')
-#         email = request.data.get('email')
-#         phone_number = request.data.get('phone_number', '')
-#         birth_date = request.data.get('birth_date', None)
-#         address = request.data.get('address', '')
         
 
 
@@ -86,10 +75,6 @@ class RetrieveAnAdoption(RetrieveAPIView):
     serializer_class = AdoptionSerializer
     # permission_classes = []
 
-# class UpdateAdoptionStatusView(UpdateAPIView):
-#     queryset = Animal.objects.all()
-#     serializer_class = UpdateAdoptionStatusSerializer
-#     # permission_classes = []
 
 class RegisterUser(APIView):
     # permission_classes = []
@@ -145,6 +130,17 @@ class UpdateUser(APIView):
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.serializer_class(user_instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
+
+class UpdateAnimal(APIView):
+    serializer_calss = AnimalSerializer
+
+    def put(self, request, *args, **kwargs):
+        instance = Animal.objects.get(pk=kwargs.get('pk'))
+        serializer = self.serializer_calss(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 

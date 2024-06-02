@@ -29,6 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 
+
 class AnimalSerializer(serializers.ModelSerializer):
     location = LocationSerializer()
 
