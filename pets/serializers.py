@@ -45,18 +45,16 @@ class AnimalSerializer(serializers.ModelSerializer):
         return animal
 
     def update(self, instance, validated_data):
-        location_data = validated_data.pop('location')
-        location, created = Location.objects.get_or_create(**location_data)
+        location_data = validated_data.pop('location', None)
+        if location_data:
+            location = instance.location
+            for key, value in location_data.items():
+                setattr(location, key, value)
+            location.save()
 
-        instance.status = validated_data.get('status', instance.status)
-        instance.species = validated_data.get('species', instance.species)
-        instance.breed = validated_data.get('breed', instance.breed)
-        instance.gender = validated_data.get('gender', instance.gender)
-        instance.name = validated_data.get('name', instance.name)
-        instance.age = validated_data.get('age', instance.age)
-        instance.location = location
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
-
         return instance
 
 

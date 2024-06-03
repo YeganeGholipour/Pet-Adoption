@@ -3,6 +3,10 @@ from django.urls import reverse
 from .models import User, Location, Animal, Adoption, UserRolesChoices
 from rest_framework import status
 from django.test import TestCase
+from rest_framework.authtoken.models import Token
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AnimalTest(TestCase):
 
@@ -31,11 +35,11 @@ class AnimalTest(TestCase):
         self.assertTrue(len(response.data) != 0)
 
     def test_register_an_animal(self):
-        location = Location.objects.create(
-            address="124 Main St",
-            name="Yegane",
-            phone_number="122-456-7890"
-        )
+        location = {
+            "address":"124 Main St",
+            "name": "Yegane",
+            "phone_number": "122-456-7890"
+        }
 
         animal_data = {
             'status': 'A',
@@ -44,10 +48,10 @@ class AnimalTest(TestCase):
             'gender': "M",
             'name': "Whiskers",
             'age': 2,
-            'location': location.id
+            'location': location
         }
 
-        response = self.client.post(reverse('register-an-animal'), animal_data)
+        response = self.client.post(reverse('register-an-animal'), animal_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(len(response.data) != 0)
 
@@ -140,7 +144,7 @@ class AnimalTest(TestCase):
             adopter=user
         )
 
-        response = self.client.get(reverse('list-adoption'))
+        response = self.client.get(reverse('list-adoptions'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(len(response.data) != 0)
 
@@ -207,4 +211,76 @@ class AnimalTest(TestCase):
         }
 
         response = self.client.patch(reverse('update-user', kwargs={'pk': user.pk}), updated_data)
-       
+    
+
+    def test_update_animal(self):
+        location = {
+            'address': "123 Comm St",
+            'name': "fatiii",
+            'phone_number': "123-458-7890"
+        }
+
+        location = Location.objects.create(**location)
+        animal = Animal.objects.create(
+            status='N',
+            species="cat",
+            breed="Golden Retriever",
+            gender="F",
+            name="Buddy",
+            age=5,
+            location=location
+        )
+        pk = animal.id
+
+        updated_data = {
+            'age': 23
+        }
+
+        response = self.client.patch(reverse('update-animal', kwargs={'pk': pk}), updated_data)
+
+    
+
+
+
+# class UserTest(TestCase):
+#     def setUp(self) -> None:
+#         self.client = APIClient()
+#         self.register_url = reverse('register-user')
+#         self.login_url = reverse('token-login')
+#         self.logout_url = reverse('token-logout')
+
+#         self.user_data = {
+#             'username': "Monir",
+#             'email': "monir@monir",
+#             'password': "alex123",
+#             'role': UserRolesChoices.ADOPTER,
+#             'phone_number': "123-456-7890",
+#             'address': "123 Comm St",
+#             'birth_date': "2000-01-01"
+#         }
+
+#         self.login_data = {
+#             'username': "Monir",
+#             'password': "alex123",
+#         }
+
+
+#     def test_register_user(self):
+#         response = self.client.post(self.register_url, self.user_data, format='json')
+#         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+#         self.assertTrue(User.objects.filter(username="Monir").exists())
+
+
+#     def test_login_user(self):
+#         self.client.post(self.register_url, self.user_data)
+#         response = self.client.post(self.login_url, self.login_data, format='json')
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertTrue(Token.objects.filter(user__username="Monir").exists())
+
+    
+#     def test_logout_user(self):
+#         self.client.post(self.register_url, self.user_data)
+#         self.client.post(self.login_url, self.login_data, format='json')
+#         response = self.client.post(self.logout_url)
+#         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+#         self.assertFalse(Token.objects.filter(user__username="Monir").exists())

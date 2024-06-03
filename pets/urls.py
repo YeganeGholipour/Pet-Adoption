@@ -12,6 +12,7 @@ urlpatterns = [
     path('list_adoptions/', views.ListAllAdoptions.as_view(), name='list-adoptions'),
     path('list_locations/', views.ListAllLocations.as_view(), name='list-locations'),
     path('update_user/<int:pk>', views.UpdateUser.as_view(), name='update-user'),
+    path('update_animal/<int:pk>', views.UpdateAnimal.as_view(), name='update-animal'),
     path('token_logout/', views.TokenLogoutView.as_view(), name='token-logout'),
     path('token_login/', views.TokenLoginView.as_view(), name='token-login'),
     path('register_user/', views.RegisterUser.as_view(), name='register-user'),

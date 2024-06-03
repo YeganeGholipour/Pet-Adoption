@@ -145,3 +145,11 @@ class UpdateAnimal(APIView):
         serializer.save()
 
         return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
+    
+    def patch(self, request, *args, **kwargs):
+        instance = Animal.objects.get(pk=kwargs.get('pk'))
+        serializer = self.serializer_calss(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
